@@ -3,13 +3,13 @@ import requests, os
 
 app = Flask(__name__)
 
-# Spotify App Credentials from Render Environment Variables
+# Environment variables (set in Render dashboard)
 CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("SPOTIFY_REDIRECT_URI")
-REFRESH_TOKEN = os.environ.get("SPOTIFY_REFRESH_TOKEN")  # You must manually set this in Render
+REFRESH_TOKEN = os.environ.get("SPOTIFY_REFRESH_TOKEN")  # <- Must be set after login
 
-# Hardcoded playlist list
+# Your fixed playlists
 playlists = [
     {"name": "Morning Chill", "uri": "spotify:playlist:7Kra2IBWzl51pB16RlrOt2"},
     {"name": "Top Hits NZ", "uri": "spotify:playlist:37i9dQZEVXcGxuK4C0FSOl"},
@@ -23,7 +23,7 @@ def index():
 
 @app.route("/login")
 def login():
-    scope = "user-modify-playback-state user-read-playback-state"
+    scope = "user-modify-playback-state user-read-playback-state user-read-currently-playing user-read-playback-position"
     return redirect(f"https://accounts.spotify.com/authorize?response_type=code&client_id={CLIENT_ID}&scope={scope}&redirect_uri={REDIRECT_URI}")
 
 @app.route("/callback")
@@ -41,15 +41,12 @@ def callback():
     tokens = response.json()
     return f"Access Token: {tokens.get('access_token')}<br>Refresh Token: {tokens.get('refresh_token')}"
 
-# Function to get a new access token using the refresh token
 def get_access_token():
     refresh_token = os.environ.get("SPOTIFY_REFRESH_TOKEN")
     client_id = os.environ.get("SPOTIFY_CLIENT_ID")
     client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET")
 
-    print("🔐 Trying to refresh token...")
-    print("Refresh token:", refresh_token is not None)
-    print("Client ID:", client_id is not None)
+    print("🔐 Using refresh token:", refresh_token[:5] + "...")
 
     response = requests.post("https://accounts.spotify.com/api/token", data={
         "grant_type": "refresh_token",
@@ -65,12 +62,10 @@ def get_access_token():
     else:
         return None
 
-# Endpoint to return list of playlists
 @app.route("/playlists")
 def get_playlists():
     return jsonify(playlists)
 
-# Endpoint to play a selected playlist
 @app.route("/play", methods=["POST"])
 def play_playlist():
     data = request.get_json()
@@ -88,6 +83,22 @@ def play_playlist():
 
     if response.status_code == 204:
         return "Playing playlist", 200
+    else:
+        return f"Error: {response.status_code}, {response.text}", 400
+
+@app.route("/devices")
+def get_devices():
+    access_token = get_access_token()
+    if not access_token:
+        return "Failed to refresh access token", 401
+
+    response = requests.get(
+        "https://api.spotify.com/v1/me/player/devices",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    if response.status_code == 200:
+        return jsonify(response.json())
     else:
         return f"Error: {response.status_code}, {response.text}", 400
 
