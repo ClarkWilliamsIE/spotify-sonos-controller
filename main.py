@@ -31,3 +31,7 @@ def callback():
     tokens = response.json()
     return f"Access Token: {tokens.get('access_token')}<br>Refresh Token: {tokens.get('refresh_token')}"
 
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
