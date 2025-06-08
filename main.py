@@ -43,17 +43,26 @@ def callback():
 
 # Function to get a new access token using the refresh token
 def get_access_token():
+    refresh_token = os.environ.get("SPOTIFY_REFRESH_TOKEN")
+    client_id = os.environ.get("SPOTIFY_CLIENT_ID")
+    client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET")
+
+    print("🔐 Trying to refresh token...")
+    print("Refresh token:", refresh_token is not None)
+    print("Client ID:", client_id is not None)
+
     response = requests.post("https://accounts.spotify.com/api/token", data={
         "grant_type": "refresh_token",
-        "refresh_token": REFRESH_TOKEN,
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET
+        "refresh_token": refresh_token,
+        "client_id": client_id,
+        "client_secret": client_secret
     })
+
+    print("🔁 Spotify response:", response.status_code, response.text)
 
     if response.status_code == 200:
         return response.json().get("access_token")
     else:
-        print("Error refreshing token:", response.text)
         return None
 
 # Endpoint to return list of playlists
